@@ -1,0 +1,25 @@
+****************
+* MACROS for EEPROM
+* created  : 2017
+****************
+
+                MACRO EE_TOGGLE_CLK
+                stz $fcb2
+                stz $fcb2
+                ENDM
+
+                MACRO EE_SET_CS_HIGH            ; CS = 1
+                ldx #63
+.\ee1             stz $fcb2
+                  stz $fcb2
+                  dex
+                bpl .\ee1
+                ENDM
+
+                MACRO EE_SET_CS_LOW             ; CS = 0 and CLK = 0
+                ldx #3
+                stx $fd87
+                dex
+                stx $fd87
+                ENDM
+                

@@ -1,0 +1,201 @@
+#
+# makefile to create a complete Atari Lynx cart using the
+# the BLL kit 
+#
+
+# for savety
+SHELL = /bin/sh
+
+ifndef PROJECT_NAME
+	$(error PROJECT_NAME not set!)
+endif
+
+ifndef LYNX_BASEDIR
+	$(error LYNX_BASEDIR not set!)
+endif
+
+ifndef LYNX_BIN
+	$(error LYNX_BIN not set!)
+endif
+
+NEWCC65:=$(LYNX_BASEDIR)/newcc65
+
+BLL_ROOT:=$(LYNX_BASEDIR)/lyxass
+export BLL_ROOT
+
+#
+# misc binaries
+# 
+
+RM=rm -f
+CP=cp
+
+#
+# lynx binaries
+# (lyxass, lynxer, ...)
+
+LYXASS=$(LYNX_BIN)/lyxass
+LYNXER=$(LYNX_BIN)/lynxer
+LYNXDIR=$(LYNX_BIN)/lynxdir
+SPRPCK=$(LYNX_BIN)/sprpck
+MAKE_LNX=$(LYNX_BIN)/make_lnx
+
+#
+# lynx binaries
+# (newcc, ...)
+
+NEWCC=$(NEWCC65)/bin/cc65
+XOPT=$(NEWCC65)/bin/xopt
+RASM=$(NEWCC65)/bin/ra65
+LIBR65=$(NEWCC65)/bin/libr65
+LINK65=$(NEWCC65)/bin/link65
+
+BIN2OBJ=$(LYNX_BIN)/bin2obj
+BIN2INCLUDE=$(LYNX_BIN)/bin2include
+BIN2INC=$(LYNX_BIN)/bin2inc
+PUCRUNCH=$(LYNX_BIN)/pucrunch
+
+#
+# Libraries and programm parameters
+#
+
+CC65INCLUDE=$(NEWCC65)/include/
+NEWCC_INC=$(NEWCC65)/include/
+export CC65INCLUDE
+
+CC65LIB=$(NEWCC65)/lib/
+NEWCC_LIB=$(NEWCC65)/lib/
+export CC65LIB
+
+RUNTIME=-r runtime.run
+LYNXLIB=lynx.olb
+LYNXCLIB=c.olb
+LINKOPT= -s2000 $(RUNTIME) $(LYNXCLIB) $(LYNXLIB)
+## CFLAGS= -v -I$(NEWCC_INC)
+CFLAGS= -I$(NEWCC_INC)
+BMPFLAGS= -p1 -t6
+
+.SUFFIXES:
+.SUFFIXES: .o .c .cc .obj .m56 .asm .puc .lyx .lnx
+
+.SECONDARY:
+.SECONDARY: .o .lyx .obj
+
+.INTERMEDIATE:
+.INTERMEDIATE: .m56
+
+.PHONY: all install clean echo
+
+.DEFAULT: all
+
+##########################################
+#          And now the rules...          #
+##########################################
+
+#
+# start pic insert.o needs special treatment
+#
+
+#insert.o : insert.asm
+#	$(LYXASS) -v -d -o insert.o $<
+
+#
+#  Normal assembler file
+#
+%.o : %.asm
+	echo "BLL_ROOT $(BLL_ROOT)"
+	$(LYXASS) -v -o $@ $<
+
+%.bin : %.asm
+	echo "BLL_ROOT $(BLL_ROOT)"
+	$(LYXASS) -d -v -o $@ $<
+
+# quiet useless
+%.spr : %.bmp
+	$(SPRPCK) $(BMPFLAGS) $<
+
+%.m65 : %.c
+	$(NEWCC) $(CFLAGS) $< 
+
+%.m65 : %.cc
+	$(NEWCC) $(CFLAGS) $< 
+
+%.obj : %.m65
+	$(XOPT)	-v $<
+	$(RASM)	-v $<
+
+%.puc : %.o
+	$(PUCRUNCH) -c0 $< $@
+
+%.puc : %.bin
+	$(PUCRUNCH) -d -c0 $< $@
+
+#
+# simple lynx game, single file unpacked, lynxer-ng is used
+#
+#%.lnx : %.o
+#	$(LYNXER) -v -l $<
+%.lnx : %.o
+	$(LYNXDIR) $<
+
+#
+# convert lyx to lnx, simple 256*1024b
+#
+#%.lnx : %.lyx
+#	$(MAKE_LNX) $< -b0 256K 
+
+# well here the mak file content must go
+#%.lnx : %.mak %.o
+#	$(MAKE_LNX) -l $<
+#
+#%.lyx : %.mak %.o
+#	$(MAKE_LNX) $<
+
+#
+# simple lynx game, single file unpacked, lynxer/-ng is used
+# if lyx is really needed
+#
+#%.lyx : %.o
+#	$(LYNXER) -v $<
+%.lyx : %.o
+	$(LYNXDIR) $<
+
+#
+# now this depends on what your want as result(s).
+#
+#$(PROJECT_NAME): $(PROJECT_NAME).lnx;
+#$(PROJECT_NAME): $(PROJECT_NAME).lyx $(PROJECT_NAME).lnx;
+
+ifeq ((suffix $(PROJECT_NAME)),)
+
+$(PROJECT_NAME): $(PROJECT_NAME).o  $(PROJECT_NAME).lyx $(PROJECT_NAME).lnx;
+
+endif
+
+all: 	$(PROJECT_NAME) ;
+
+clean:
+	-$(RM) *.o
+	-$(RM) *.m65
+	-$(RM) *.obj
+	-$(RM) *.puc
+	-$(RM) *.lyx
+	-$(RM) *.lnx
+
+echo:
+	@echo "Listing envs:"
+	@echo "BLL_ROOT=$(BLL_ROOT)"
+	@echo "LYXASS=$(LYXASS)"
+	@echo "LYNXER=$(LYNXER)"
+	@echo "LYNXDIR=$(LYNXDIR)"
+	@echo "SPRPCK=$(SPRPCK)"
+	@echo "MAKE_LNX=$(MAKE_LNX)"
+	@echo "NEWCC=$(NEWCC)"
+	@echo "XOPT=$(XOPT)"
+	@echo "RASM=$(RASM)"
+	@echo "LIBR65=$(LIBR65)"
+	@echo "LINK65=$(LINK65)"
+	@echo "BIN2OBJ=$(BIN2OBJ)"
+	@echo "BIN2INC=$(BIN2INC)"
+	@echo "BIN2INCLUDE=$(BIN2INCLUDE)"
+	@echo "... thats all!"

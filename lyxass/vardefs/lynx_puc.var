@@ -1,0 +1,8 @@
+;*
+;* for puncrunch
+;*
+
+  BEGIN_ZP
+LZPOS::		ds	2		; 2 ZeroPage temporaries
+bitstr::	ds	1		; 1 temporary (does not need to be ZP)
+  END_ZP
